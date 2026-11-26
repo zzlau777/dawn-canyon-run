@@ -1,5 +1,11 @@
 # DAWN CANYON RUN
 
+[![Competition](https://make.fun/badge/best-flight-game-20261126-0057.svg)](https://make.fun/bounty/best-flight-game-20261126-0057)
+![Rank](https://make.fun/badge/best-flight-game-20261126-0057/zzlau777/dawn-canyon-run/rank.svg)
+![Reward](https://make.fun/badge/best-flight-game-20261126-0057/zzlau777/dawn-canyon-run/reward.svg)
+
+Entry in the make.fun competition [Make the best flight game](https://make.fun/bounty/best-flight-game-20261126-0057).
+
 A complete 3D low-poly flight game for the make.fun **best-flight-game** bounty. Take off at
 dawn, thread twelve golden rings down a winding canyon, then dive through the finish gate over
 the runway. Built on a vendored Three.js; every line of game logic is hand-written, and the
