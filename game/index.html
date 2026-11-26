@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAWN CANYON RUN — a low-poly flight game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a2233; }
+  #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #ffd9a0; }
+  .hudBox { background: rgba(8, 12, 22, 0.55); border: 1px solid rgba(255, 179, 71, 0.55); border-radius: 8px; padding: 8px 12px; }
+  .hudLabel { font-size: 11px; letter-spacing: 2px; color: #ffb347; opacity: 0.85; }
+  .hudValue { font-family: "Consolas", "SF Mono", ui-monospace, monospace; font-size: 26px; font-weight: 700; color: #ffd9a0; text-shadow: 0 0 8px rgba(255, 160, 60, 0.8); line-height: 1.1; }
+  .hudUnit { font-size: 12px; color: #ffb347; margin-left: 3px; }
+
+  #readouts { position: absolute; top: 14px; left: 14px; display: flex; gap: 10px; }
+  #readouts .hudBox { min-width: 86px; text-align: center; }
+
+  #missionBox { position: absolute; top: 14px; right: 14px; text-align: right; }
+  #missionBox .hudValue { font-size: 22px; }
+  #missionBox .row { display: flex; justify-content: flex-end; gap: 14px; align-items: baseline; }
+
+  #ringNav { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 170px; }
+  #ringArrow { display: inline-block; font-size: 26px; color: #ffd24d; text-shadow: 0 0 10px rgba(255, 200, 60, 0.9); transition: transform 0.08s linear; }
+  #ringDist { font-family: "Consolas", ui-monospace, monospace; font-size: 22px; font-weight: 700; color: #ffe9bd; text-shadow: 0 0 8px rgba(255, 170, 60, 0.8); }
+
+  #panel { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(10, 12, 18, 0.78); border: 1px solid rgba(255, 179, 71, 0.5); border-radius: 14px; padding: 8px 14px 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
+  #gauges { display: block; }
+  #throttleRow { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  #throttleRow .hudLabel { flex: 0 0 auto; }
+  #throttleTrack { flex: 1 1 auto; height: 10px; background: #22262e; border: 1px solid rgba(255,179,71,0.5); border-radius: 5px; overflow: hidden; }
+  #throttleFill { height: 100%; width: 0%; background: linear-gradient(90deg, #b36a1e, #ffb347, #ffd24d); }
+  #boostTag { color: #7dd7ff; font-size: 11px; letter-spacing: 2px; visibility: hidden; }
+
+  #stallWarning { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); font-size: 44px; font-weight: 800; letter-spacing: 8px; color: #ff3b30; text-shadow: 0 0 18px rgba(255, 40, 30, 0.9); display: none; }
+  #centerMessage { position: absolute; top: 34%; left: 50%; transform: translateX(-50%); text-align: center; font-size: 34px; font-weight: 800; letter-spacing: 3px; color: #ffe9bd; text-shadow: 0 0 16px rgba(255, 170, 60, 0.85); opacity: 0; white-space: nowrap; }
+  #centerMessage small { display: block; font-size: 17px; letter-spacing: 2px; color: #ffd24d; margin-top: 4px; }
+
+  /* ---------- Overlays ---------- */
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  .card { pointer-events: auto; text-align: center; background: rgba(10, 14, 24, 0.72); border: 1px solid rgba(255, 179, 71, 0.65); border-radius: 16px; padding: 26px 44px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: #ffe9bd; max-width: 640px; }
+  .card h1 { margin: 0 0 4px; font-size: 52px; letter-spacing: 4px; color: #ffb347; text-shadow: 0 0 22px rgba(255, 150, 50, 0.75); }
+  .card h2 { margin: 0 0 10px; font-size: 30px; letter-spacing: 3px; color: #ffb347; }
+  .card .sub { font-size: 16px; color: #ffd9a0; margin-bottom: 14px; letter-spacing: 1px; }
+  .controls { display: inline-block; text-align: left; font-size: 14px; line-height: 1.75; color: #e8ddc8; margin: 4px 0 16px; }
+  .controls b { color: #ffd24d; font-family: "Consolas", ui-monospace, monospace; font-weight: 700; }
+  .bigButton { pointer-events: auto; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #231303; background: linear-gradient(180deg, #ffd24d, #ff9d2e); border: none; border-radius: 10px; padding: 13px 46px; cursor: pointer; box-shadow: 0 0 22px rgba(255, 160, 60, 0.55); }
+  .bigButton:hover { filter: brightness(1.1); }
+  .resultsTable { margin: 8px auto 16px; font-size: 18px; line-height: 1.8; color: #ffe9bd; }
+  .resultsTable b { color: #ffd24d; font-family: "Consolas", ui-monospace, monospace; }
+  #finalGrade { font-size: 64px; font-weight: 900; color: #ffd24d; text-shadow: 0 0 26px rgba(255, 190, 60, 0.9); line-height: 1; margin: 4px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" aria-label="DAWN CANYON RUN: fly the orange prop plane through twelve golden rings in the canyon"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud" class="hidden">
+  <div id="readouts">
+    <div class="hudBox"><div class="hudLabel">ALT</div><div><span class="hudValue" id="altValue">0</span><span class="hudUnit">FT</span></div></div>
+    <div class="hudBox"><div class="hudLabel">SPD</div><div><span class="hudValue" id="spdValue">0</span><span class="hudUnit">KT</span></div></div>
+    <div class="hudBox"><div class="hudLabel">HDG</div><div><span class="hudValue" id="hdgValue">000</span><span class="hudUnit">DEG</span></div></div>
+  </div>
+
+  <div id="ringNav" class="hudBox">
+    <div class="hudLabel" id="ringNavLabel">NEXT RING</div>
+    <div><span id="ringArrow">&#10148;</span> <span id="ringDist">0 m</span></div>
+  </div>
+
+  <div id="missionBox" class="hudBox">
+    <div class="row"><span class="hudLabel">RING</span><span class="hudValue" id="ringValue">0/12</span></div>
+    <div class="row"><span class="hudLabel">TIME</span><span class="hudValue" id="timeValue">00:00</span></div>
+    <div class="row"><span class="hudLabel">SCORE</span><span class="hudValue" id="scoreValue">0</span></div>
+  </div>
+
+  <div id="stallWarning">STALL</div>
+  <div id="centerMessage"></div>
+
+  <div id="panel">
+    <canvas id="gauges" width="672" height="118"></canvas>
+    <div id="throttleRow">
+      <span class="hudLabel">THR</span>
+      <div id="throttleTrack"><div id="throttleFill"></div></div>
+      <span id="boostTag">BOOST</span>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="titleScreen">
+  <div class="card">
+    <h1>DAWN CANYON RUN</h1>
+    <div class="sub">Twelve golden rings. One canyon. First light.<br>Take off, thread every ring, then dive through the finish gate.</div>
+    <div class="controls">
+      <b>W / S</b> throttle up / down &nbsp; <b>SHIFT</b> boost<br>
+      <b>&uarr; / &darr;</b> climb / dive &nbsp; <b>&larr; / &rarr;</b> bank left / right<br>
+      <b>A / D</b> rudder &nbsp; <b>MOUSE</b> steer toward the pointer<br>
+      <b>P</b> pause &nbsp; <b>M</b> mute &nbsp; <b>R</b> restart
+    </div>
+    <br>
+    <button class="bigButton" id="startButton">START ENGINE</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pauseScreen">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <div class="sub">The canyon waits. Press P to fly on.</div>
+    <button class="bigButton" id="resumeButton">RESUME</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="resultsScreen">
+  <div class="card">
+    <h2>MISSION COMPLETE</h2>
+    <div id="finalGrade">A</div>
+    <div class="resultsTable">
+      TIME <b id="finalTime">00:00</b> &nbsp; RINGS <b id="finalRings">12/12</b><br>
+      SCORE <b id="finalScore">0</b>
+    </div>
+    <button class="bigButton" id="restartButton">FLY AGAIN</button>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/config.js"></script>
+<script src="src/random.js"></script>
+<script src="src/input.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/world.js"></script>
+<script src="src/aircraft.js"></script>
+<script src="src/rings.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/main.js"></script>
+<script src="src/shots.js"></script>
+</body>
+</html>
